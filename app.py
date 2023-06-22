@@ -1,5 +1,6 @@
 import sqlite3
 from flask import Flask, render_template
+from werkzeug.exceptions import abort
 
 app = Flask(__name__)
 
@@ -11,20 +12,27 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def get_post(post_id):
+    conn = get_db_connection()
+    post = conn.execute('SELECT * FROM posts WHERE id = ?',
+                        (post_id,)).fetchone()
+    conn.close()
+    if post is None:
+        abort(404)
+    return post
+
 @app.route('/')
 def index():
     # Open Database connection
-    # The database file is made with init_db.py which uses schema.sql to define what the database table will look like
     conn = get_db_connection()
-    # This is called an SQL query
-    # Selects all entries from the posts table
-    # Fetch all fetches all the rows od the query result
     posts = conn.execute('SELECT * FROM posts').fetchall()
     conn.close()
-    # posts=posts is an object that's passed as an argument so the index.html template has access to the blog posts
-    # render_template is a Flask helper function that allows the use of Jinja templates
-    # Junja templates all you to dynamically build HTML pages with Python code
     return render_template('index.html', posts=posts)
+
+@app.route('/<int:post_id>')
+def post(post_id):
+    post = get_post(post_id)
+    return render_template('post.html', post=post)
 
 if __name__ == "__main__":
     app.run(debug=True)
